@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { cn } from '../lib/utils';
-import { Play, Pause, SkipBack, SkipForward, Repeat, FastForward, PauseOctagon, Volume2, MoveRight, NotebookPen } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Repeat, FastForward, PauseOctagon, Volume2, MoveRight, NotebookPen, Captions } from 'lucide-react';
 
 export function Controls({
     isPlaying,
@@ -8,7 +8,7 @@ export function Controls({
     onPrev,
     onNext,
     onSeekBackward,
-    onSeekForward, // Optional, can use prev/next if strictly per requirements
+    onSeekForward,
     playbackSpeed,
     setPlaybackSpeed,
     loopCurrent,
@@ -20,8 +20,8 @@ export function Controls({
     currentTime,
     duration,
     onSeek,
-    isNotesOpen,
-    toggleNotes
+    activePanel,
+    togglePanel
 }) {
     const [sliderValue, setSliderValue] = useState(0);
     const [isDragging, setIsDragging] = useState(false);
@@ -65,7 +65,7 @@ export function Controls({
                 </div>
 
                 <div className="relative h-12 w-full group select-none">
-                    {/* 1. Visual Track (Waveform) */}
+                    {/* Visual Track (Waveform) */}
                     <div className="absolute inset-0 bg-secondary/50 rounded-lg overflow-hidden pointer-events-none">
                         {/* Mock Wavebars */}
                         <div className="absolute inset-0 flex items-center justify-between px-1 opacity-20">
@@ -84,8 +84,7 @@ export function Controls({
                         />
                     </div>
 
-                    {/* 2. Interaction Layer (Native Slider) */}
-                    {/* We overlay an invisible range input to handle all drag logic natively and perfectly */}
+                    {/* Interaction Layer (Native Slider) */}
                     <input
                         type="range"
                         min="0"
@@ -145,14 +144,27 @@ export function Controls({
                     </button>
 
                     <button
-                        onClick={toggleNotes}
+                        onClick={() => togglePanel('subtitles')}
                         className={cn(
                             "p-2 rounded-lg transition-all border border-transparent relative",
-                            isNotesOpen
+                            activePanel === 'subtitles'
                                 ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
                                 : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                         )}
-                        title="Toggle Study Notes"
+                        title="Subtitle Editor"
+                    >
+                        <Captions size={18} />
+                    </button>
+
+                    <button
+                        onClick={() => togglePanel('notes')}
+                        className={cn(
+                            "p-2 rounded-lg transition-all border border-transparent relative",
+                            activePanel === 'notes'
+                                ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
+                                : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                        )}
+                        title="Study Notes"
                     >
                         <NotebookPen size={18} />
                     </button>

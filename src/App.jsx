@@ -4,6 +4,8 @@ import { Controls } from './components/Controls';
 import { Playlist } from './components/Playlist';
 import { ProcessingOverlay } from './components/ProcessingOverlay';
 import { NotesPanel } from './components/NotesPanel';
+import { SubtitleEditor } from './components/SubtitleEditor';
+import { SubtitleOverlay } from './components/SubtitleOverlay';
 import { processFilesForPlayer } from './lib/filesystem';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { dbService } from './lib/db';
@@ -26,12 +28,16 @@ function AppContent() {
   const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
 
   const [continuousPlay, setContinuousPlay] = useState(true);
-  const [loopCurrent, setLoopCurrent] = useState(false);
+  const [loopCurrent, setLoopCurrent] = useState(true); // Default loop to true for shadowing usually
   const [autoPause, setAutoPause] = useState(false);
+  const [isCCEnabled, setIsCCEnabled] = useState(true);
 
-  // Notes State
-  const [isNotesOpen, setIsNotesOpen] = useState(false);
+  // Panels State
+  const [activePanel, setActivePanel] = useState(null); // 'notes' | 'subtitles' | null
+
+  // Data State
   const [notes, setNotes] = useState([]);
+  const [subtitles, setSubtitles] = useState([]);
 
   const audioRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -113,6 +119,8 @@ function AppContent() {
     setFiles([]);
     setFileTree([]);
     setNotes([]);
+    setSubtitles([]);
+    setActivePanel(null);
 
     // 4. Clear DB
     await dbService.clearAll();
@@ -144,6 +152,7 @@ function AppContent() {
       setCurrentFileIndex(null); // Reset selection
       setCurrentTime(0);
       setNotes([]);
+      setSubtitles([]);
     }
 
     // 3. Update State (Filter out deleted)
@@ -323,46 +332,70 @@ function AppContent() {
     if (idx !== -1) { setCurrentFileIndex(idx); setIsPlaying(true); }
   };
 
-  // --- Notes Logic ---
+  // --- Data Loading Logic ---
   useEffect(() => {
-    const loadNotes = async () => {
+    const loadData = async () => {
       if (!currentTrack) {
         setNotes([]);
+        setSubtitles([]);
         return;
       }
       try {
-        const loadedNotes = await dbService.getNotes(currentTrack.id);
+        // Parallel Load
+        const [loadedNotes, loadedSubs] = await Promise.all([
+          dbService.getNotes(currentTrack.id),
+          dbService.getSubtitles(currentTrack.id)
+        ]);
+
         // Ensure sorted
-        const sorted = loadedNotes.sort((a, b) => a.timestamp - b.timestamp);
-        setNotes(sorted);
+        setNotes(loadedNotes.sort((a, b) => a.timestamp - b.timestamp));
+        setSubtitles(loadedSubs);
       } catch (e) {
-        console.error("Failed to load notes", e);
+        console.error("Failed to load data", e);
         setNotes([]);
+        setSubtitles([]);
       }
     };
-    loadNotes();
+    loadData();
   }, [currentTrack]);
 
+  // --- Notes Actions ---
   const handleAddNote = async (newNote) => {
-    // 1. Auto Pause
-    setIsPlaying(false);
-    if (audioRef.current) audioRef.current.pause();
-
-    // 2. Optimistic UI
+    setIsPlaying(false); if (audioRef.current) audioRef.current.pause(); // Auto-pause
     const updatedNotes = [...notes, newNote].sort((a, b) => a.timestamp - b.timestamp);
     setNotes(updatedNotes);
-
-    // 3. Persist
-    if (currentTrack) {
-      await dbService.saveNotes(currentTrack.id, updatedNotes);
-    }
+    if (currentTrack) await dbService.saveNotes(currentTrack.id, updatedNotes);
   };
 
   const handleDeleteNote = async (noteId) => {
     const updatedNotes = notes.filter(n => n.id !== noteId);
     setNotes(updatedNotes);
-    if (currentTrack) {
-      await dbService.saveNotes(currentTrack.id, updatedNotes);
+    if (currentTrack) await dbService.saveNotes(currentTrack.id, updatedNotes);
+  };
+
+  const handleEditNote = async (noteId, newContent) => {
+    const updatedNotes = notes.map(n => n.id === noteId ? { ...n, content: newContent } : n);
+    setNotes(updatedNotes);
+    if (currentTrack) await dbService.saveNotes(currentTrack.id, updatedNotes);
+  };
+
+  // --- Subtitles Actions ---
+  const handleSubtitleUpdate = async (newSubtitles) => {
+    // Sorting
+    const sorted = [...newSubtitles].sort((a, b) => a.start - b.start);
+    setSubtitles(sorted);
+    if (currentTrack) await dbService.saveSubtitles(currentTrack.id, sorted);
+  };
+
+  // --- Panel Management ---
+  const togglePanel = (panelName) => {
+    const newState = activePanel === panelName ? null : panelName;
+    setActivePanel(newState);
+
+    // Auto-pause if opening ANY panel
+    if (newState && isPlaying) {
+      setIsPlaying(false);
+      if (audioRef.current) audioRef.current.pause();
     }
   };
 
@@ -376,22 +409,28 @@ function AppContent() {
     }
   };
 
-
   // Keyboard
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.target.tagName === 'INPUT') return;
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
       switch (e.code) {
         case 'Space': e.preventDefault(); togglePlayPause(); break;
         case 'ArrowLeft': if (audioRef.current) audioRef.current.currentTime -= 5; break;
         case 'ArrowRight': if (audioRef.current) audioRef.current.currentTime += 5; break;
         case 'ArrowUp': e.preventDefault(); prevTrack(); break;
         case 'ArrowDown': e.preventDefault(); nextTrack(); break;
+        case 'KeyN': e.preventDefault(); togglePanel('notes'); break;
+        case 'KeyS':
+          // Toggle Subtitles (CC) - adding this hotkey as a nice-to-have
+          // Only if modifier is not pressed? Let's be careful.
+          // Actually, user didn't ask for KeyS, they said they want to see subtitles.
+          // Im not adding KeyS.
+          break;
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [togglePlayPause, prevTrack, nextTrack]);
+  }, [togglePlayPause, prevTrack, nextTrack, activePanel, isPlaying]);
 
 
   // Loading State
@@ -490,6 +529,7 @@ function AppContent() {
                 <div className="relative">
                   <div className="w-48 h-48 md:w-64 md:h-64 rounded-3xl bg-gradient-to-tr from-primary to-purple-600 shadow-[0_20px_60px_-10px_rgba(var(--primary),0.4)] mx-auto flex items-center justify-center relative overflow-hidden group">
                     <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1614680376593-902f74cf0d41?q=80&w=1000&auto=format&fit=crop')] opacity-30 mix-blend-overlay bg-cover bg-center transition-transform hover:scale-110 duration-700" />
+
                     {isPlaying ? (
                       <div className="flex items-end gap-1.5 h-16">
                         {[...Array(6)].map((_, i) => (
@@ -510,6 +550,14 @@ function AppContent() {
                     {currentTrack.parentFolder || 'Unsorted'}
                   </p>
                 </div>
+
+                {/* POSITION 2: SubtitleOverlay Moved Here */}
+                <SubtitleOverlay
+                  subtitles={subtitles}
+                  currentTime={currentTime}
+                  isEnabled={isCCEnabled}
+                />
+
               </div>
             ) : (
               <div className="text-center text-muted-foreground select-none">
@@ -545,22 +593,35 @@ function AppContent() {
               duration={duration}
               onSeek={(time) => { if (audioRef.current) audioRef.current.currentTime = time; }}
 
-              isNotesOpen={isNotesOpen}
-              toggleNotes={() => setIsNotesOpen(!isNotesOpen)}
+              activePanel={activePanel}
+              togglePanel={togglePanel}
             />
           </div>
         </main>
 
-        {/* RIGHT PANEL - NOTES */}
-        {isNotesOpen && (
+        {/* RIGHT PANEL - DYNAMIC */}
+        {activePanel === 'notes' && (
           <aside className="w-80 shrink-0 h-full animate-in slide-in-from-right duration-300 bg-background border-l border-border shadow-xl z-20">
             <NotesPanel
               notes={notes}
               onAddNote={handleAddNote}
               onDeleteNote={handleDeleteNote}
+              onEditNote={handleEditNote}
               onSeek={handleSeek}
               currentTime={currentTime}
               currentTrack={currentTrack}
+            />
+          </aside>
+        )}
+
+        {activePanel === 'subtitles' && (
+          <aside className="w-80 shrink-0 h-full animate-in slide-in-from-right duration-300 bg-background border-l border-border shadow-xl z-20">
+            <SubtitleEditor
+              subtitles={subtitles}
+              setSubtitles={handleSubtitleUpdate}
+              currentTime={currentTime}
+              currentTrack={currentTrack}
+              onSeek={handleSeek}
             />
           </aside>
         )}
