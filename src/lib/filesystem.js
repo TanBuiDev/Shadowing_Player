@@ -30,7 +30,8 @@ export function processFilesForPlayer(inputList) {
             originalFile: item.file || item.originalFile, // Handle both DB format and internal format
             path: item.path,
             name: item.name,
-            id: item.id
+            id: item.id,
+            url: item.url
         }));
     }
 
