@@ -2,12 +2,16 @@ import { openDB } from 'idb';
 
 const DB_NAME = 'ShadowingPlayerDB';
 const STORE_NAME = 'files';
+const NOTES_STORE = 'notes';
 
 // Initialize DB
-const dbPromise = openDB(DB_NAME, 1, {
+const dbPromise = openDB(DB_NAME, 2, {
     upgrade(db) {
         if (!db.objectStoreNames.contains(STORE_NAME)) {
             db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+        }
+        if (!db.objectStoreNames.contains(NOTES_STORE)) {
+            db.createObjectStore(NOTES_STORE); // Key: fileId, Value: Array of notes
         }
     },
 });
@@ -40,19 +44,43 @@ export const dbService = {
 
     async deleteFile(id) {
         const db = await dbPromise;
-        return db.delete(STORE_NAME, id);
+        const tx = db.transaction([STORE_NAME, NOTES_STORE], 'readwrite');
+        const p1 = tx.objectStore(STORE_NAME).delete(id);
+        const p2 = tx.objectStore(NOTES_STORE).delete(id);
+        await Promise.all([p1, p2, tx.done]);
     },
 
     async deleteFiles(ids) {
         const db = await dbPromise;
-        const tx = db.transaction(STORE_NAME, 'readwrite');
-        const store = tx.objectStore(STORE_NAME);
-        const promises = ids.map(id => store.delete(id));
+        const tx = db.transaction([STORE_NAME, NOTES_STORE], 'readwrite');
+        const fileStore = tx.objectStore(STORE_NAME);
+        const noteStore = tx.objectStore(NOTES_STORE);
+
+        const promises = ids.map(id => {
+            fileStore.delete(id);
+            noteStore.delete(id);
+        });
         await Promise.all([...promises, tx.done]);
     },
 
     async clearAll() {
         const db = await dbPromise;
-        return db.clear(STORE_NAME);
+        const tx = db.transaction([STORE_NAME, NOTES_STORE], 'readwrite');
+        await Promise.all([
+            tx.objectStore(STORE_NAME).clear(),
+            tx.objectStore(NOTES_STORE).clear(),
+            tx.done
+        ]);
+    },
+
+    // --- Notes ---
+    async getNotes(fileId) {
+        const db = await dbPromise;
+        return (await db.get(NOTES_STORE, fileId)) || [];
+    },
+
+    async saveNotes(fileId, notes) {
+        const db = await dbPromise;
+        return db.put(NOTES_STORE, notes, fileId);
     }
 };

@@ -3,6 +3,7 @@ import { Upload, Music, Settings, FolderUp, RefreshCw, Mic, Volume2, FileAudio, 
 import { Controls } from './components/Controls';
 import { Playlist } from './components/Playlist';
 import { ProcessingOverlay } from './components/ProcessingOverlay';
+import { NotesPanel } from './components/NotesPanel';
 import { processFilesForPlayer } from './lib/filesystem';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { dbService } from './lib/db';
@@ -27,6 +28,10 @@ function AppContent() {
   const [continuousPlay, setContinuousPlay] = useState(true);
   const [loopCurrent, setLoopCurrent] = useState(false);
   const [autoPause, setAutoPause] = useState(false);
+
+  // Notes State
+  const [isNotesOpen, setIsNotesOpen] = useState(false);
+  const [notes, setNotes] = useState([]);
 
   const audioRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -107,6 +112,7 @@ function AppContent() {
     // 3. Reset State
     setFiles([]);
     setFileTree([]);
+    setNotes([]);
 
     // 4. Clear DB
     await dbService.clearAll();
@@ -137,6 +143,7 @@ function AppContent() {
       setIsPlaying(false);
       setCurrentFileIndex(null); // Reset selection
       setCurrentTime(0);
+      setNotes([]);
     }
 
     // 3. Update State (Filter out deleted)
@@ -316,6 +323,60 @@ function AppContent() {
     if (idx !== -1) { setCurrentFileIndex(idx); setIsPlaying(true); }
   };
 
+  // --- Notes Logic ---
+  useEffect(() => {
+    const loadNotes = async () => {
+      if (!currentTrack) {
+        setNotes([]);
+        return;
+      }
+      try {
+        const loadedNotes = await dbService.getNotes(currentTrack.id);
+        // Ensure sorted
+        const sorted = loadedNotes.sort((a, b) => a.timestamp - b.timestamp);
+        setNotes(sorted);
+      } catch (e) {
+        console.error("Failed to load notes", e);
+        setNotes([]);
+      }
+    };
+    loadNotes();
+  }, [currentTrack]);
+
+  const handleAddNote = async (newNote) => {
+    // 1. Auto Pause
+    setIsPlaying(false);
+    if (audioRef.current) audioRef.current.pause();
+
+    // 2. Optimistic UI
+    const updatedNotes = [...notes, newNote].sort((a, b) => a.timestamp - b.timestamp);
+    setNotes(updatedNotes);
+
+    // 3. Persist
+    if (currentTrack) {
+      await dbService.saveNotes(currentTrack.id, updatedNotes);
+    }
+  };
+
+  const handleDeleteNote = async (noteId) => {
+    const updatedNotes = notes.filter(n => n.id !== noteId);
+    setNotes(updatedNotes);
+    if (currentTrack) {
+      await dbService.saveNotes(currentTrack.id, updatedNotes);
+    }
+  };
+
+  const handleSeek = (time) => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = time;
+      if (!isPlaying) {
+        setIsPlaying(true);
+        audioRef.current.play();
+      }
+    }
+  };
+
+
   // Keyboard
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -396,7 +457,8 @@ function AppContent() {
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        <aside className="w-80 border-r border-border bg-card/30 flex flex-col shrink-0 flex-1 h-full min-h-0">
+        {/* SIDEBAR */}
+        <aside className="w-80 border-r border-border bg-card/30 flex flex-col shrink-0 flex-1 h-full min-h-0 transition-all duration-300 ease-in-out">
           <div className="p-4 border-b border-border/50 bg-card/50 backdrop-blur-sm z-10 flex justify-between items-center">
             <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
               <Volume2 size={12} /> Playlist ({files.length})
@@ -420,6 +482,7 @@ function AppContent() {
           />
         </aside>
 
+        {/* MAIN VISUAL AREA */}
         <main className="flex-[2] flex flex-col relative bg-gradient-to-br from-background to-secondary/20 min-w-0">
           <div className="flex-1 flex items-center justify-center p-8 min-h-0 overflow-y-auto">
             {currentTrack ? (
@@ -481,9 +544,27 @@ function AppContent() {
               currentTime={currentTime}
               duration={duration}
               onSeek={(time) => { if (audioRef.current) audioRef.current.currentTime = time; }}
+
+              isNotesOpen={isNotesOpen}
+              toggleNotes={() => setIsNotesOpen(!isNotesOpen)}
             />
           </div>
         </main>
+
+        {/* RIGHT PANEL - NOTES */}
+        {isNotesOpen && (
+          <aside className="w-80 shrink-0 h-full animate-in slide-in-from-right duration-300 bg-background border-l border-border shadow-xl z-20">
+            <NotesPanel
+              notes={notes}
+              onAddNote={handleAddNote}
+              onDeleteNote={handleDeleteNote}
+              onSeek={handleSeek}
+              currentTime={currentTime}
+              currentTrack={currentTrack}
+            />
+          </aside>
+        )}
+
       </div>
 
       <audio

@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { cn } from '../lib/utils';
-import { Play, Pause, SkipBack, SkipForward, Repeat, FastForward, PauseOctagon, Volume2, MoveRight } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Repeat, FastForward, PauseOctagon, Volume2, MoveRight, NotebookPen } from 'lucide-react';
 
 export function Controls({
     isPlaying,
@@ -19,7 +19,9 @@ export function Controls({
     toggleContinuousPlay,
     currentTime,
     duration,
-    onSeek
+    onSeek,
+    isNotesOpen,
+    toggleNotes
 }) {
     const [sliderValue, setSliderValue] = useState(0);
     const [isDragging, setIsDragging] = useState(false);
@@ -140,6 +142,19 @@ export function Controls({
                         title="Auto-Pause after file"
                     >
                         <PauseOctagon size={18} />
+                    </button>
+
+                    <button
+                        onClick={toggleNotes}
+                        className={cn(
+                            "p-2 rounded-lg transition-all border border-transparent relative",
+                            isNotesOpen
+                                ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
+                                : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                        )}
+                        title="Toggle Study Notes"
+                    >
+                        <NotebookPen size={18} />
                     </button>
                 </div>
 
