@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Upload, Music, Settings, FolderUp, RefreshCw, Mic, Volume2, FileAudio, Trash2 } from 'lucide-react';
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import { Controls } from './components/Controls';
 import { Playlist } from './components/Playlist';
 import { ProcessingOverlay } from './components/ProcessingOverlay';
@@ -443,6 +444,7 @@ function AppContent() {
 export default function App() {
   return (
     <ErrorBoundary>
+      <SpeedInsights />
       <AppContent />
     </ErrorBoundary>
   );
