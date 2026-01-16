@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { Upload, Music, Settings, FolderUp, RefreshCw, Mic, Volume2, FileAudio, Trash2 } from 'lucide-react';
 import { Controls } from './components/Controls';
 import { Playlist } from './components/Playlist';
+import { ProcessingOverlay } from './components/ProcessingOverlay';
 import { processFilesForPlayer } from './lib/filesystem';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { dbService } from './lib/db';
@@ -11,6 +12,10 @@ function AppContent() {
   const [files, setFiles] = useState([]);
   const [fileTree, setFileTree] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Processing State
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [progress, setProgress] = useState({ processed: 0, total: 0, filename: '' });
 
   const [currentFileIndex, setCurrentFileIndex] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -29,26 +34,57 @@ function AppContent() {
 
   const [isDragging, setIsDragging] = useState(false);
 
-  // --- Persistence: Load on Mount ---
+  // Helper for non-blocking loop
+  const waitNextFrame = () => new Promise(resolve => setTimeout(resolve, 0));
+
+  // --- Persistence: Load on Mount (Chunked) ---
   useEffect(() => {
     const init = async () => {
       try {
+        // 1. Fetch raw data
         const storedFiles = await dbService.getAllFiles();
-        if (storedFiles && storedFiles.length > 0) {
-          // Reconstruct state
-          const { sortedFiles, fileTree: newTree } = processFilesForPlayer(storedFiles);
-          const preparedFiles = sortedFiles.map(f => ({
-            ...f,
-            url: URL.createObjectURL(f.originalFile)
-          }));
 
-          setFiles(preparedFiles);
+        if (storedFiles && storedFiles.length > 0) {
+          setIsProcessing(true);
+          setProgress({ processed: 0, total: storedFiles.length, filename: 'Initializing...' });
+
+          // 2. Process in chunks (Creating ObjectURLs can be expensive en masse)
+          const CHUNK_SIZE = 50; // Larger chunk size for simple URL creation
+          const preparedFiles = [];
+
+          for (let i = 0; i < storedFiles.length; i += CHUNK_SIZE) {
+            const chunk = storedFiles.slice(i, i + CHUNK_SIZE);
+
+            // Process chunk
+            const chunkResult = chunk.map(f => ({
+              ...f,
+              url: URL.createObjectURL(f.file || f.originalFile) // Handle potential DB structure naming
+            }));
+
+            preparedFiles.push(...chunkResult);
+
+            // Update UI
+            setProgress({
+              processed: Math.min(i + CHUNK_SIZE, storedFiles.length),
+              total: storedFiles.length,
+              filename: chunk[0].name
+            });
+
+            await waitNextFrame();
+          }
+
+          // 3. Finalize Tree (Synchronous but typically fast enough for sorted lists)
+          // If tree building is slow, we'd need to move it to a Worker, but for now this suffices.
+          const { sortedFiles, fileTree: newTree } = processFilesForPlayer(preparedFiles); // Re-sort/treeify
+
+          setFiles(preparedFiles); // Use the prepared ones which have URLs
           setFileTree(newTree);
         }
       } catch (e) {
         console.error("Failed to load files from DB", e);
       } finally {
         setIsLoading(false);
+        setIsProcessing(false);
       }
     };
     init();
@@ -71,54 +107,91 @@ function AppContent() {
     await dbService.clearAll();
   };
 
-  // --- File Handling ---
-  const handleFiles = async (newFilesList, reset = false) => {
-    // 1. Gather files to process
-    let allRawFiles = [];
-    if (!reset) {
-      // Use existing original files from state
-      // (Note: persistence requires us to have access to the Blob, which we kept in 'originalFile')
-      allRawFiles = files.map(f => ({
-        originalFile: f.originalFile,
-        path: f.path,
-        name: f.name,
-        id: f.id
-      }));
+  // --- File Handling (Chunked) ---
+  const handleFiles = async (input, reset = false) => {
+    const newFilesList = Array.from(input); // Convert FileList to Array immediately
+    if (newFilesList.length === 0) return;
+
+    setIsProcessing(true);
+    setProgress({ processed: 0, total: newFilesList.length, filename: 'Starting...' });
+
+    try {
+      // 1. Prepare Base List
+      let finalFilesFn = [];
+
+      // If NOT resetting, strictly keep ALL existing files first
+      if (!reset) {
+        finalFilesFn = [...files];
+      } else {
+        // If resetting, clear old URLs first to avoid leaks
+        files.forEach(f => URL.revokeObjectURL(f.url));
+        await dbService.clearAll(); // Clear DB if it's a hard reset
+      }
+
+      // 2. Chunked Processing of NEW files
+      const CHUNK_SIZE = 20;
+      const processedNewFiles = [];
+
+      for (let i = 0; i < newFilesList.length; i += CHUNK_SIZE) {
+        const chunk = newFilesList.slice(i, i + CHUNK_SIZE);
+
+        // A. Process Chunk (Data Extraction)
+        // We use the filesystem lib helper to normalize just this chunk
+        // note: processFilesForPlayer returns { sortedFiles } which are normalized objects
+        // We only want the *normalization* part, but calling the whole func is fine for small chunks
+        const { sortedFiles: normalizedChunk } = processFilesForPlayer(chunk);
+
+        // B. Add to IDB immediately
+        // We persist the raw file data needed for reconstruction
+        // formatted for DB: { id, name, path, file }
+        const dbItems = normalizedChunk.map(f => ({
+          id: f.id,
+          name: f.name,
+          path: f.path,
+          originalFile: f.originalFile
+        }));
+        await dbService.saveFiles(dbItems);
+
+        // C. Prepare for State (Add URL)
+        const readyChunk = normalizedChunk.map(f => ({
+          ...f,
+          url: URL.createObjectURL(f.originalFile)
+        }));
+
+        processedNewFiles.push(...readyChunk);
+
+        // Update Progress
+        setProgress({
+          processed: Math.min(i + CHUNK_SIZE, newFilesList.length),
+          total: newFilesList.length,
+          filename: chunk[0].name
+        });
+
+        // Yield to Main Thread
+        await waitNextFrame();
+      }
+
+      // 3. Merge & Deduplicate
+      // We merge the *newly processed* ones into the *base* list
+      const combined = [...finalFilesFn, ...processedNewFiles];
+
+      const uniqueMap = new Map();
+      combined.forEach(f => uniqueMap.set(f.id, f));
+      const finalUniqueList = Array.from(uniqueMap.values());
+
+      // 4. Re-calculate Tree (One-shot)
+      // We pass the full list with URLs to the processor. 
+      // Since they already have the correct structure, the processor handles them fine as "Case 2" objects
+      const { sortedFiles, fileTree: newTree } = processFilesForPlayer(finalUniqueList);
+
+      setFiles(sortedFiles);
+      setFileTree(newTree);
+
+    } catch (err) {
+      console.error("Error processing files:", err);
+    } finally {
+      setIsProcessing(false);
     }
-
-    // Normalize new items
-    const normalizedNew = processFilesForPlayer(newFilesList).sortedFiles;
-
-    // Combine
-    allRawFiles = [...allRawFiles, ...normalizedNew];
-
-    // Deduplicate
-    const uniqueMap = new Map();
-    allRawFiles.forEach(f => {
-      const key = f.id; // ID is path-size-timestamp based
-      uniqueMap.set(key, f);
-    });
-    const finalRawList = Array.from(uniqueMap.values());
-
-    // 2. Persist to DB (Async but don't block UI entirely if possible, though safest to await)
-    await dbService.saveFiles(finalRawList);
-
-    // 3. Update State (Re-process to ensure correct sort/tree with combined data)
-    const { sortedFiles, fileTree: newTree } = processFilesForPlayer(finalRawList);
-
-    // Reuse URLs if possible
-    const existingUrlMap = new Map();
-    files.forEach(f => existingUrlMap.set(f.id, f.url));
-
-    const preparedFiles = sortedFiles.map(f => {
-      const url = existingUrlMap.get(f.id) || URL.createObjectURL(f.originalFile);
-      return { ...f, url };
-    });
-
-    setFiles(preparedFiles);
-    setFileTree(newTree);
-
-    // If we added files and nothing was playing/selected, maybe select?
   };
 
   const onFileSelect = (e) => {
@@ -226,6 +299,8 @@ function AppContent() {
       onDragLeave={() => setIsDragging(false)}
       onDrop={onDrop}
     >
+      <ProcessingOverlay isProcessing={isProcessing} progress={progress} />
+
       {isDragging && (
         <div className="absolute inset-0 bg-primary/20 z-50 flex items-center justify-center backdrop-blur-sm border-4 border-primary border-dashed m-4 rounded-3xl pointer-events-none">
           <div className="text-4xl font-bold text-primary animate-bounce">Drop Audio Here</div>
