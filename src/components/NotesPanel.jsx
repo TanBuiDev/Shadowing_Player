@@ -1,16 +1,49 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { NotebookPen, Plus, Trash2, Clock, Play } from 'lucide-react';
+import { NotebookPen, Plus, Trash2, Clock, Play, Pencil, Check, X } from 'lucide-react';
 import { cn } from '../lib/utils';
+
+// Helper Component for Auto-Resizing Textarea
+const AutoResizeTextarea = React.forwardRef(({ value, onChange, className, ...props }, ref) => {
+    const textareaRef = useRef(null);
+    const combinedRef = (node) => {
+        textareaRef.current = node;
+        if (typeof ref === 'function') ref(node);
+        else if (ref) ref.current = node;
+    };
+
+    useEffect(() => {
+        const textarea = textareaRef.current;
+        if (textarea) {
+            textarea.style.height = 'auto'; // Reset height
+            textarea.style.height = `${textarea.scrollHeight}px`; // Set to scrollHeight
+        }
+    }, [value]);
+
+    return (
+        <textarea
+            ref={combinedRef}
+            value={value}
+            onChange={onChange}
+            className={cn("overflow-hidden resize-none", className)}
+            rows={1}
+            {...props}
+        />
+    );
+});
+AutoResizeTextarea.displayName = "AutoResizeTextarea";
 
 export function NotesPanel({
     notes,
     onAddNote,
     onDeleteNote,
+    onEditNote,
     onSeek,
     currentTime,
     currentTrack
 }) {
     const [inputValue, setInputValue] = useState("");
+    const [editingNoteId, setEditingNoteId] = useState(null);
+    const [editValue, setEditValue] = useState("");
     const inputRef = useRef(null);
 
     const formatTime = (seconds) => {
@@ -36,9 +69,24 @@ export function NotesPanel({
         setInputValue("");
     };
 
-    // Auto-focus input when panel opens or when intending to type
-    // (Optional: depends on UX preference, maybe just leave it manually focused)
+    const startEditing = (note) => {
+        setEditingNoteId(note.id);
+        setEditValue(note.content);
+    };
 
+    const saveEdit = (noteId) => {
+        if (!editValue.trim()) return;
+        onEditNote(noteId, editValue);
+        setEditingNoteId(null);
+        setEditValue("");
+    };
+
+    const cancelEdit = () => {
+        setEditingNoteId(null);
+        setEditValue("");
+    };
+
+    // Auto-focus input when panel opens or when intending to type
     if (!currentTrack) {
         return (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-6 text-center">
@@ -67,9 +115,12 @@ export function NotesPanel({
                     notes.map((note) => (
                         <div
                             key={note.id}
-                            className="bg-card/80 border border-border/50 rounded-lg p-3 hover:border-primary/50 transition-colors group relative shadow-sm"
+                            className={cn(
+                                "bg-card/80 border border-border/50 rounded-lg p-3 transition-all relative shadow-sm group",
+                                editingNoteId === note.id ? "ring-1 ring-primary/50" : "hover:border-primary/50"
+                            )}
                         >
-                            <div className="flex justify-between items-start mb-1">
+                            <div className="flex justify-between items-start mb-2">
                                 <button
                                     onClick={() => onSeek(note.timestamp)}
                                     className="flex items-center gap-1.5 text-xs font-bold text-primary bg-primary/10 hover:bg-primary/20 px-2 py-0.5 rounded transition-colors"
@@ -81,17 +132,59 @@ export function NotesPanel({
                                     {new Date(note.createdAt).toLocaleDateString()}
                                 </span>
                             </div>
-                            <p className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed">
-                                {note.content}
-                            </p>
 
-                            <button
-                                onClick={() => onDeleteNote(note.id)}
-                                className="absolute bottom-2 right-2 p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md opacity-0 group-hover:opacity-100 transition-all"
-                                title="Delete Note"
-                            >
-                                <Trash2 size={12} />
-                            </button>
+                            {editingNoteId === note.id ? (
+                                <div className="space-y-2">
+                                    <AutoResizeTextarea
+                                        value={editValue}
+                                        onChange={(e) => setEditValue(e.target.value)}
+                                        className="w-full bg-secondary/50 border border-border rounded-md p-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary/50 min-h-[60px] max-h-[300px]"
+                                        autoFocus
+                                    />
+                                    <div className="flex gap-2 justify-end">
+                                        <button
+                                            onClick={cancelEdit}
+                                            className="p-1 text-muted-foreground hover:text-foreground hover:bg-secondary rounded"
+                                            title="Cancel"
+                                        >
+                                            <X size={14} />
+                                        </button>
+                                        <button
+                                            onClick={() => saveEdit(note.id)}
+                                            className="p-1 text-primary hover:bg-primary/10 rounded"
+                                            title="Save"
+                                        >
+                                            <Check size={14} />
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <>
+                                    <p className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed pr-8">
+                                        {note.content}
+                                    </p>
+
+                                    <div className="absolute bottom-6 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                        <button
+                                            onClick={() => startEditing(note)}
+                                            className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md transition-colors"
+                                            title="Edit Note"
+                                        >
+                                            <Pencil size={12} />
+                                        </button>
+                                    </div>
+
+                                    <div className="absolute bottom-1 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                        <button
+                                            onClick={() => onDeleteNote(note.id)}
+                                            className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+                                            title="Delete Note"
+                                        >
+                                            <Trash2 size={12} />
+                                        </button>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     ))
                 )}
@@ -99,28 +192,38 @@ export function NotesPanel({
 
             {/* Input Area */}
             <div className="p-4 bg-background/50 backdrop-blur-xl border-t border-border/50 shrink-0">
-                <form onSubmit={handleAdd} className="flex gap-2">
-                    <div className="relative flex-1">
-                        <div className="absolute left-3 top-2.5 text-xs font-mono text-muted-foreground bg-secondary/50 px-1.5 rounded">
-                            {formatTime(currentTime)}
+                <form onSubmit={handleAdd} className="flex flex-col gap-2">
+                    <div className="flex justify-between items-center px-1">
+                        <div className="text-xs font-mono text-muted-foreground bg-secondary/50 px-2 py-0.5 rounded">
+                            At {formatTime(currentTime)}
                         </div>
-                        <input
+                    </div>
+                    <div className="relative flex gap-2">
+                        <AutoResizeTextarea
                             ref={inputRef}
-                            type="text"
                             value={inputValue}
                             onChange={(e) => setInputValue(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                    e.preventDefault();
+                                    handleAdd(e);
+                                }
+                            }}
                             placeholder="Type vocabulary or note..."
-                            className="w-full bg-secondary/50 border border-border rounded-lg pl-16 pr-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 placeholder:text-muted-foreground/50"
-                            autoComplete="off"
+                            className="flex-1 bg-secondary/50 border border-border rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 placeholder:text-muted-foreground/50 min-h-[50px] max-h-[200px]"
                         />
+                        <button
+                            type="submit"
+                            disabled={!inputValue.trim()}
+                            className="self-end bg-primary text-primary-foreground hover:bg-primary/90 p-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                            title="Add Note (Enter)"
+                        >
+                            <Plus size={20} />
+                        </button>
                     </div>
-                    <button
-                        type="submit"
-                        disabled={!inputValue.trim()}
-                        className="bg-primary text-primary-foreground hover:bg-primary/90 p-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        <Plus size={20} />
-                    </button>
+                    <p className="text-[10px] text-muted-foreground text-center opacity-50">
+                        Shift + Enter for new line
+                    </p>
                 </form>
             </div>
         </div>
