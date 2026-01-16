@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { cn } from '../lib/utils';
-import { FileAudio, Folder, FolderOpen, ChevronRight, ChevronDown, Play, Music } from 'lucide-react';
+import { FileAudio, Folder, FolderOpen, ChevronRight, ChevronDown, Play, Music, Trash2 } from 'lucide-react';
 
-const FileTreeNode = ({ node, level, currentFileId, onPlay, isPlaying, expandedPaths, toggleFolder }) => {
+const FileTreeNode = ({ node, level, currentFileId, onPlay, onDelete, isPlaying, expandedPaths, toggleFolder }) => {
     const isFolder = node.type === 'folder';
     const isExpanded = expandedPaths.has(node.path);
 
@@ -11,21 +11,36 @@ const FileTreeNode = ({ node, level, currentFileId, onPlay, isPlaying, expandedP
 
     const paddingLeft = `${level * 16 + 12}px`;
 
+    const handleDelete = (e) => {
+        e.stopPropagation();
+        onDelete(node);
+    };
+
     if (isFolder) {
         return (
             <div>
                 <div
                     onClick={() => toggleFolder(node.path)}
-                    className="flex items-center gap-2 py-1.5 pr-2 hover:bg-secondary/50 cursor-pointer select-none text-muted-foreground hover:text-foreground transition-colors"
+                    className="flex items-center justify-between gap-2 py-1.5 pr-2 hover:bg-secondary/50 cursor-pointer select-none text-muted-foreground hover:text-foreground transition-colors group"
                     style={{ paddingLeft }}
                 >
-                    <span className="opacity-70">
-                        {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                    </span>
-                    <span className={cn("text-sky-400/80")}>
-                        {isExpanded ? <FolderOpen size={16} /> : <Folder size={16} />}
-                    </span>
-                    <span className="text-sm font-medium truncate">{node.name}</span>
+                    <div className="flex items-center gap-2 overflow-hidden">
+                        <span className="opacity-70">
+                            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                        </span>
+                        <span className={cn("text-sky-400/80")}>
+                            {isExpanded ? <FolderOpen size={16} /> : <Folder size={16} />}
+                        </span>
+                        <span className="text-sm font-medium truncate">{node.name}</span>
+                    </div>
+
+                    <button
+                        onClick={handleDelete}
+                        className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded transition-all"
+                        title="Delete Folder"
+                    >
+                        <Trash2 size={12} />
+                    </button>
                 </div>
                 {isExpanded && (
                     <div>
@@ -36,6 +51,7 @@ const FileTreeNode = ({ node, level, currentFileId, onPlay, isPlaying, expandedP
                                 level={level + 1}
                                 currentFileId={currentFileId}
                                 onPlay={onPlay}
+                                onDelete={onDelete}
                                 isPlaying={isPlaying}
                                 expandedPaths={expandedPaths}
                                 toggleFolder={toggleFolder}
@@ -52,25 +68,35 @@ const FileTreeNode = ({ node, level, currentFileId, onPlay, isPlaying, expandedP
         <div
             onClick={() => onPlay(node.fileData)}
             className={cn(
-                "group flex items-center gap-2 py-2 pr-2 cursor-pointer transition-all border-l-2",
+                "group flex items-center justify-between gap-2 py-2 pr-2 cursor-pointer transition-all border-l-2",
                 isActive
                     ? "bg-secondary border-primary text-primary"
                     : "border-transparent hover:bg-secondary/30 text-foreground/80 hover:text-foreground"
             )}
             style={{ paddingLeft }}
         >
-            <div className={cn(
-                "shrink-0 transition-colors",
-                isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
-            )}>
-                {isActive && isPlaying ? <Play size={14} fill="currentColor" /> : <Music size={14} />}
+            <div className="flex items-center gap-2 overflow-hidden">
+                <div className={cn(
+                    "shrink-0 transition-colors",
+                    isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                )}>
+                    {isActive && isPlaying ? <Play size={14} fill="currentColor" /> : <Music size={14} />}
+                </div>
+                <span className="text-sm truncate leading-tight">{node.name}</span>
             </div>
-            <span className="text-sm truncate leading-tight">{node.name}</span>
+
+            <button
+                onClick={handleDelete}
+                className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded transition-all shrink-0"
+                title="Delete File"
+            >
+                <Trash2 size={12} />
+            </button>
         </div>
     );
 };
 
-export function Playlist({ fileTree, currentFileId, onPlay, isPlaying }) {
+export function Playlist({ fileTree, currentFileId, onPlay, onDelete, isPlaying }) {
     const [expandedPaths, setExpandedPaths] = useState(new Set());
 
     // Function to recursively find path to the active file
@@ -138,6 +164,7 @@ export function Playlist({ fileTree, currentFileId, onPlay, isPlaying }) {
                     level={0}
                     currentFileId={currentFileId}
                     onPlay={onPlay}
+                    onDelete={onDelete}
                     isPlaying={isPlaying}
                     expandedPaths={expandedPaths}
                     toggleFolder={toggleFolder}

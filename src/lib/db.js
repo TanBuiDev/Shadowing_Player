@@ -38,6 +38,19 @@ export const dbService = {
         return db.getAll(STORE_NAME);
     },
 
+    async deleteFile(id) {
+        const db = await dbPromise;
+        return db.delete(STORE_NAME, id);
+    },
+
+    async deleteFiles(ids) {
+        const db = await dbPromise;
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        const promises = ids.map(id => store.delete(id));
+        await Promise.all([...promises, tx.done]);
+    },
+
     async clearAll() {
         const db = await dbPromise;
         return db.clear(STORE_NAME);
