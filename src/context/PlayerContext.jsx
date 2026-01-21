@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useFileSystem } from '@/context/FileSystemContext';
 import { useSettings } from '@/context/SettingsContext';
@@ -5,7 +6,7 @@ import { useSettings } from '@/context/SettingsContext';
 const PlayerContext = createContext(null);
 
 export function PlayerProvider({ children }) {
-  const { currentTrack, nextTrack, prevTrack } = useFileSystem();
+  const { currentTrack, nextTrack, markers, addMarker, deleteMarker } = useFileSystem();
   const { settings } = useSettings();
 
   const audioRef = useRef(null);
@@ -24,7 +25,7 @@ export function PlayerProvider({ children }) {
 
   // Playback Modes
   const [continuousPlay, setContinuousPlay] = useState(true);
-  const [loopCurrent, setLoopCurrent] = useState(false); // Default false according to user preference maybe? Original code had different defaults. Let's sync with original app defaults if known, or safe defaults.
+  const [loopCurrent, setLoopCurrent] = useState(false);
   const [autoPause, setAutoPause] = useState(false);
 
   // Track replay counts for Auto-Replay
@@ -39,15 +40,21 @@ export function PlayerProvider({ children }) {
       if (audio.src !== currentTrack.url) {
         audio.src = currentTrack.url;
         replayCountRef.current = 0; // Reset replay count
-        if (isPlaying) audio.play().catch(console.warn);
+        // Playback resumption is handled by user action or auto-play logic, not here by default to avoid auto-play policy issues?
+        // Actually original user code had: if (isPlaying) audio.play()
+        // If we swtich track while playing, we probably want to keep playing.
+        if (isPlaying) {
+          audio.play().catch(console.warn);
+        }
       }
     } else {
       // No track
-      if (isPlaying) setIsPlaying(false);
       audio.pause();
-      audio.src = '';
+      audio.removeAttribute('src');
+      audio.load(); // Forces the element to update its state
+      // We rely on onPause to update state
     }
-  }, [currentTrack]); // isPlaying excluded to avoid re-triggering src change on play toggle
+  }, [currentTrack, isPlaying]);
 
   // Sync Playback Speed
   useEffect(() => {
@@ -110,6 +117,21 @@ export function PlayerProvider({ children }) {
     }
   };
 
+  const addMarkerAtCurrentTime = () => {
+    if (!currentTrack) return;
+    const newMarker = {
+      id: crypto.randomUUID(),
+      time: currentTime,
+      label: 'Marker',
+      color: '#fbbf24', // Default Amber
+    };
+    addMarker(newMarker);
+  };
+
+  const removeMarker = (id) => {
+    deleteMarker(id);
+  };
+
   return (
     <PlayerContext.Provider
       value={{
@@ -134,17 +156,30 @@ export function PlayerProvider({ children }) {
         togglePanel,
         isSidebarOpen,
         setIsSidebarOpen,
+        // Markers
+        markers,
+        addMarkerAtCurrentTime,
+        removeMarker,
       }}
     >
       {children}
       {/* Hidden Audio Element */}
       <audio
         ref={audioRef}
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => setIsPlaying(false)}
         onTimeUpdate={(e) => setCurrentTime(e.target.currentTime)}
         onLoadedMetadata={(e) => setDuration(e.target.duration)}
         onEnded={onTrackEnded}
         onError={(e) => {
-          console.error('Audio Error', e);
+          // Ignore errors when src is empty (cleanup phase)
+          if (!audioRef.current?.getAttribute('src')) return;
+
+          const err = e.target.error;
+          // Ignore MEDIA_ELEMENT_ERROR: Empty src attribute (Code 4) if caused by reset
+          if (err?.code === 4 && (!audioRef.current.src || audioRef.current.src === window.location.href)) return;
+
+          console.error('Audio Error:', err?.code, err?.message);
           setIsPlaying(false);
         }}
       />

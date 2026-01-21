@@ -9,6 +9,7 @@ const DEFAULT_SETTINGS = {
     seekBack: 'ArrowLeft',
     seekForward: 'ArrowRight',
     toggleRecord: 'KeyM',
+    addMarker: 'KeyP',
   },
   autoReplay: {
     count: 0,

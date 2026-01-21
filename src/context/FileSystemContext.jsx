@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { dbService } from '@/lib/db';
 import { processFilesForPlayer } from '@/lib/filesystem';
@@ -109,6 +110,7 @@ export function FileSystemProvider({ children }) {
 
                 const readyChunk = normalizedChunk.map((f) => ({
                     ...f,
+                    markers: [],
                     url: URL.createObjectURL(f.originalFile),
                 }));
 
@@ -131,6 +133,7 @@ export function FileSystemProvider({ children }) {
             setFileTree(newTree);
         } catch (err) {
             console.error('Error processing files:', err);
+            alert('Failed to process files. Please refresh the page and try again.\nError: ' + err.message);
         } finally {
             setIsProcessing(false);
         }
@@ -209,6 +212,7 @@ export function FileSystemProvider({ children }) {
     // Data State
     const [notes, setNotes] = useState([]);
     const [subtitles, setSubtitles] = useState([]);
+    const [markers, setMarkers] = useState([]);
 
     // Load Data for Current Track
     useEffect(() => {
@@ -216,19 +220,23 @@ export function FileSystemProvider({ children }) {
             if (!currentTrack) {
                 setNotes([]);
                 setSubtitles([]);
+                setMarkers([]);
                 return;
             }
             try {
-                const [loadedNotes, loadedSubs] = await Promise.all([
+                const [loadedNotes, loadedSubs, loadedMarkers] = await Promise.all([
                     dbService.getNotes(currentTrack.id),
                     dbService.getSubtitles(currentTrack.id),
+                    dbService.getMarkers(currentTrack.id),
                 ]);
                 setNotes(loadedNotes.sort((a, b) => a.timestamp - b.timestamp));
                 setSubtitles(loadedSubs);
+                setMarkers(loadedMarkers.sort((a, b) => a.time - b.time));
             } catch (e) {
                 console.error('Failed to load data', e);
                 setNotes([]);
                 setSubtitles([]);
+                setMarkers([]);
             }
         };
         loadData();
@@ -262,6 +270,20 @@ export function FileSystemProvider({ children }) {
         await dbService.saveSubtitles(currentTrack.id, sorted);
     };
 
+    const addMarker = async (newMarker) => {
+        if (!currentTrack) return;
+        const updatedMarkers = [...markers, newMarker].sort((a, b) => a.time - b.time);
+        setMarkers(updatedMarkers);
+        await dbService.saveMarkers(currentTrack.id, updatedMarkers);
+    };
+
+    const deleteMarker = async (markerId) => {
+        if (!currentTrack) return;
+        const updatedMarkers = markers.filter((m) => m.id !== markerId);
+        setMarkers(updatedMarkers);
+        await dbService.saveMarkers(currentTrack.id, updatedMarkers);
+    };
+
     return (
         <FileSystemContext.Provider
             value={{
@@ -281,10 +303,13 @@ export function FileSystemProvider({ children }) {
                 // Data
                 notes,
                 subtitles,
+                markers,
                 addNote,
                 deleteNote,
                 editNote,
                 updateSubtitles,
+                addMarker,
+                deleteMarker,
             }}
         >
             {children}
