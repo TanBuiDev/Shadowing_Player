@@ -26,6 +26,7 @@ export function MainLayout() {
     isSidebarOpen,
     setIsSidebarOpen,
     audioRef,
+    addMarkerAtCurrentTime,
   } = usePlayer();
 
   const { settings, saveSettings } = useSettings();
@@ -60,8 +61,11 @@ export function MainLayout() {
       toggleRecord: () => {
         console.log('Toggle Record triggered (placeholder)');
       },
+      addMarker: () => {
+        addMarkerAtCurrentTime();
+      },
     }),
-    [togglePlayPause, audioRef, setIsPlaying]
+    [togglePlayPause, audioRef, setIsPlaying, addMarkerAtCurrentTime]
   );
 
   useHotkeys(settings.keyMap, handleHotkeys);
@@ -104,6 +108,7 @@ export function MainLayout() {
     >
       <ProcessingOverlay isProcessing={isProcessing} progress={progress} />
       <SettingsModal
+        key={isSettingsOpen ? 'open' : 'closed'}
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         settings={settings}

@@ -6,12 +6,10 @@ import { usePlayer } from '@/context/PlayerContext';
 import { useFileSystem } from '@/context/FileSystemContext';
 
 export function SubtitleEditor() {
-    const { currentTime, audioRef } = usePlayer();
+    const { currentTime } = usePlayer();
     const { subtitles, updateSubtitles, currentTrack: fsTrack } = useFileSystem();
 
-    const onSeek = (time) => {
-        if (audioRef.current) audioRef.current.currentTime = time;
-    };
+    // Removed unused seeking helper
 
     const setSubtitles = updateSubtitles;
     const currentTrack = fsTrack;

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { cn } from '@/lib/utils';
 import {
     Play,
@@ -15,6 +15,7 @@ import {
     ChevronLeft,
     Check,
     Keyboard,
+    MapPin,
 } from 'lucide-react';
 import { usePlayer } from '@/context/PlayerContext';
 import { useFileSystem } from '@/context/FileSystemContext';
@@ -61,6 +62,9 @@ export function Controls({ onOpenSettings }) {
         setAutoPause,
         activePanel,
         togglePanel,
+        markers,
+        addMarkerAtCurrentTime,
+        removeMarker,
     } = usePlayer();
 
     const { nextTrack, prevTrack } = useFileSystem();
@@ -70,12 +74,9 @@ export function Controls({ onOpenSettings }) {
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [settingsView, setSettingsView] = useState('main'); // 'main' | 'speed'
 
-    // Sync slider with audio current time when NOT dragging
-    useEffect(() => {
-        if (!isDragging) {
-            setSliderValue(currentTime);
-        }
-    }, [currentTime, isDragging]);
+    // Derived state for slider position
+    // If dragging, use local state. If not, sync with audio player time.
+    const currentProgress = isDragging ? sliderValue : currentTime;
 
     const handleSeekChange = (e) => {
         const newVal = parseFloat(e.target.value);
@@ -83,6 +84,7 @@ export function Controls({ onOpenSettings }) {
     };
 
     const handleSeekStart = () => {
+        setSliderValue(currentTime);
         setIsDragging(true);
     };
 
@@ -111,13 +113,14 @@ export function Controls({ onOpenSettings }) {
     return (
         <div className="flex flex-col gap-6 w-full max-w-3xl mx-auto p-6 bg-card/60 backdrop-blur-xl border border-border/40 rounded-3xl shadow-2xl">
             {/* Smooth Scrubbing Progress Bar */}
-            <div className="space-y-2 px-2">
+            <div className="space-y-6 px-2 mt-4">
                 <div className="flex justify-between text-xs font-bold text-muted-foreground font-mono tracking-widest">
-                    <span>{formatTime(sliderValue)}</span>
+                    <span>{formatTime(currentProgress)}</span>
                     <span>{formatTime(duration)}</span>
                 </div>
 
                 <div className="relative h-12 w-full group select-none">
+                    {/* Visual Track (Waveform) */}
                     {/* Visual Track (Waveform) */}
                     <div className="absolute inset-0 bg-secondary/50 rounded-xl overflow-hidden pointer-events-none ring-1 ring-white/5">
                         {/* Mock Wavebars */}
@@ -126,7 +129,7 @@ export function Controls({ onOpenSettings }) {
                                 <div
                                     key={i}
                                     className="w-1 bg-foreground rounded-full transition-[height] duration-500 will-change-[height]"
-                                    style={{ height: `${20 + Math.random() * 60}%` }}
+                                    style={{ height: `${20 + ((i * 13) % 60)}%` }}
                                 />
                             ))}
                         </div>
@@ -134,19 +137,61 @@ export function Controls({ onOpenSettings }) {
                         <div
                             className="absolute top-0 left-0 h-full bg-primary/30 backdrop-blur-sm border-r-2 border-primary transition-all duration-75 ease-out"
                             style={{
-                                width: `${isFinite(duration) && duration > 0 ? (sliderValue / duration) * 100 : 0
+                                width: `${isFinite(duration) && duration > 0 ? (currentProgress / duration) * 100 : 0
                                     }%`,
                             }}
                         />
+
                     </div>
+
+                    {/* MARKERS LAYER (Above Bar) */}
+                    {markers.map((marker) => (
+                        <div
+                            key={marker.id}
+                            className="absolute bottom-full mb-1 w-0.5 z-20 group/marker pointer-events-none"
+                            style={{
+                                left: `${(marker.time / (duration || 1)) * 100}%`,
+                            }}
+                        >
+                            {/* The Stem (Line down to bar) */}
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 w-[1px] h-4 bg-white/50 group-hover/marker:bg-white/80 transition-colors pointer-events-none" />
+
+                            {/* The Head (Click Target) - Lollipop */}
+                            <button
+                                className="absolute bottom-0 -translate-x-1/2 translate-y-1/2 w-6 h-6 flex items-center justify-center pointer-events-auto transition-transform duration-200 hover:scale-125 focus:outline-none"
+                                onClick={(e) => {
+                                    e.stopPropagation(); // VITAL: Stop seeking bar
+                                    e.preventDefault();
+                                    if (audioRef.current) audioRef.current.currentTime = marker.time;
+                                }}
+                                onContextMenu={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    removeMarker(marker.id);
+                                }}
+                                title={`Jump to ${formatTime(marker.time)} (Right-click to delete)`}
+                            >
+                                {/* Visible Shape */}
+                                <div
+                                    className="w-3 h-3 rounded-full shadow-[0_2px_10px_rgba(0,0,0,0.5)] border border-white/20"
+                                    style={{ backgroundColor: marker.color }}
+                                />
+
+                                {/* Tooltip on Hover */}
+                                <div className="absolute bottom-full mb-2 opacity-0 group-hover/marker:opacity-100 transition-opacity bg-black/90 text-white text-[10px] px-2 py-1 rounded whitespace-nowrap pointer-events-none">
+                                    {formatTime(marker.time)}
+                                </div>
+                            </button>
+                        </div>
+                    ))}
 
                     {/* Interaction Layer (Native Slider) */}
                     <input
                         type="range"
                         min="0"
                         max={duration || 0}
-                        step="0.1"
-                        value={sliderValue}
+                        step="0.01"
+                        value={currentProgress}
                         onInput={handleSeekChange}
                         onMouseDown={handleSeekStart}
                         onTouchStart={handleSeekStart}
@@ -196,7 +241,7 @@ export function Controls({ onOpenSettings }) {
                         className="group flex items-center justify-center w-20 h-20 bg-primary text-primary-foreground rounded-full shadow-[0_10px_40px_-10px_rgba(var(--primary),0.5)] hover:bg-primary/90 hover:scale-105 active:scale-95 transition-all duration-300"
                     >
                         {isPlaying ? (
-                            <Pause size={36} fill="currentColor" onClick={togglePlayPause} />
+                            <Pause size={36} fill="currentColor" />
                         ) : (
                             <Play size={36} fill="currentColor" className="ml-1" />
                         )}
@@ -212,6 +257,12 @@ export function Controls({ onOpenSettings }) {
 
                 {/* GROUP 3: FEATURES & SETTINGS (Right) */}
                 <div className="flex items-center gap-2 md:gap-4">
+                    <ControlButton
+                        icon={MapPin}
+                        title="Add Marker (Shortcut: P)"
+                        onClick={addMarkerAtCurrentTime}
+                        className="text-amber-500 hover:bg-amber-500/10 hover:text-amber-600"
+                    />
                     <ControlButton
                         icon={Captions}
                         title="Subtitles"
