@@ -8,12 +8,8 @@ export function SettingsModal({ isOpen, onClose, settings, onSaveSettings }) {
   const [listeningCoords, setListeningCoords] = useState(null); // { actionKey: string }
 
   // Sync local state when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      setLocalSettings(settings);
-      setListeningCoords(null);
-    }
-  }, [isOpen, settings]);
+  // Handled by parent remounting via key prop
+  // DELETE THIS BLOCK
 
   // Handle Key Capture
   useEffect(() => {
@@ -30,10 +26,21 @@ export function SettingsModal({ isOpen, onClose, settings, onSaveSettings }) {
       }
 
       // Create new map
-      const newKeyMap = {
-        ...localSettings.keyMap,
-        [listeningCoords.actionKey]: e.code,
-      };
+      const newKeyMap = { ...localSettings.keyMap };
+
+      // 1. "Steal" logic: Check if this key is already bound to another action
+      const existingActionKey = Object.keys(newKeyMap).find(
+        (key) => newKeyMap[key] === e.code
+      );
+
+      if (existingActionKey && existingActionKey !== listeningCoords.actionKey) {
+        // Unbind the old action (or set to null/empty)
+        // We'll set it to null or remove the key entirely
+        newKeyMap[existingActionKey] = null;
+      }
+
+      // 2. Bind to new action
+      newKeyMap[listeningCoords.actionKey] = e.code;
 
       setLocalSettings((prev) => ({ ...prev, keyMap: newKeyMap }));
       setListeningCoords(null);
@@ -78,6 +85,7 @@ export function SettingsModal({ isOpen, onClose, settings, onSaveSettings }) {
     { id: 'seekBack', label: 'Seek Backward 5s' },
     { id: 'seekForward', label: 'Seek Forward 5s' },
     { id: 'toggleRecord', label: 'Toggle Record' },
+    { id: 'addMarker', label: 'Add Timestamp Marker' },
   ];
 
   return (
