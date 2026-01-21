@@ -14,7 +14,7 @@ import { useSettings, useFileSystem, usePlayer } from '@/context';
 import { useHotkeys } from '@/hooks/useHotkeys';
 
 export function MainLayout() {
-  const { files, handleFiles, currentTrack, clearPlaylist, isProcessing, progress } =
+  const { files, handleFiles, currentTrack, clearPlaylist, isProcessing, progress, isLoading } =
     useFileSystem();
 
   const {
@@ -79,6 +79,18 @@ export function MainLayout() {
     }
     e.target.value = null;
   };
+
+  // Initial Loading State
+  if (isLoading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background text-primary">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+          <p className="text-sm font-medium text-muted-foreground animate-pulse">Loading Library...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
