@@ -5,18 +5,21 @@ A modern, feature-rich audio player built specifically for language learners pra
 ## Features
 
 ### 🎧 Specialized Playback Controls
+
 - **Adjustable Playback Speed**: Slow down or speed up audio without altering pitch to match your learning pace.
 - **Auto-Pause**: Option to automatically pause playback after each track, giving you time to repeat/shadow what you heard.
 - **Loop Current Track**: Repeat a single track indefinitely for intensive practice.
 - **Smart Navigation**: Seek backward/forward by 5 seconds for quick implementation of the "A-B repeat" style manual workflow.
 
 ### 📂 File Management & Persistence
+
 - **Local File Support**: Upload individual audio files or entire directories while preserving the folder structure.
 - **Drag & Drop**: Intuitive drag-and-drop interface for adding files.
 - **Data Persistence**: Uses **IndexedDB** to save your playlist and files locally in the browser. Your study materials remain available even after you refresh or close the page.
 - **Playlist Management**: View files in a hierarchical tree structure and clear the playlist with a single click.
 
 ### 💻 Modern UI/UX
+
 - **Responsive Design**: Built with Tailwind CSS for a sleek, dark-mode-first aesthetic.
 - **Keyboard Shortcuts**:
   - `Space`: Play/Pause
@@ -35,23 +38,27 @@ A modern, feature-rich audio player built specifically for language learners pra
 ## Getting Started
 
 ### Prerequisites
+
 - Node.js (Latest LTS version recommended)
 - npm or yarn
 
 ### Installation
 
 1. Clone the repository:
+
    ```bash
    git clone <repository-url>
    cd shadowing_audio_player
    ```
 
 2. Install dependencies:
+
    ```bash
    npm install
    ```
 
 3. Start the development server:
+
    ```bash
    npm run dev
    ```

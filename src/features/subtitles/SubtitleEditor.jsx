@@ -1,15 +1,21 @@
 import React, { useRef, useEffect } from 'react';
 import { Upload, Download, Plus, Trash2, RefreshCw, Captions, Clock } from 'lucide-react';
-import { cn } from '../lib/utils';
-import { parseSRT, parseParsedSubtitlesToSRT } from '../lib/subtitleParser';
+import { cn } from '@/lib/utils';
+import { parseSRT, parseParsedSubtitlesToSRT } from '@/lib/subtitleParser';
+import { usePlayer } from '@/context/PlayerContext';
+import { useFileSystem } from '@/context/FileSystemContext';
 
-export function SubtitleEditor({
-    subtitles,
-    setSubtitles,
-    currentTime,
-    currentTrack,
-    onSeek
-}) {
+export function SubtitleEditor() {
+    const { currentTime, audioRef } = usePlayer();
+    const { subtitles, updateSubtitles, currentTrack: fsTrack } = useFileSystem();
+
+    const onSeek = (time) => {
+        if (audioRef.current) audioRef.current.currentTime = time;
+    };
+
+    const setSubtitles = updateSubtitles;
+    const currentTrack = fsTrack;
+
     const fileInputRef = useRef(null);
     const activeSubRef = useRef(null);
 
@@ -30,8 +36,8 @@ export function SubtitleEditor({
                 const parsed = parseSRT(evt.target.result);
                 setSubtitles(parsed);
             } catch (err) {
-                console.error("Failed to parse subtitles", err);
-                alert("Invalid subtitle file.");
+                console.error('Failed to parse subtitles', err);
+                alert('Invalid subtitle file.');
             }
         };
         reader.readAsText(file);
@@ -58,7 +64,7 @@ export function SubtitleEditor({
             id: crypto.randomUUID(),
             start: start,
             end: start + 2.0, // Default 2s duration
-            text: ''
+            text: '',
         };
         // Insert in chronological order
         const newSubs = [...subtitles, newSub].sort((a, b) => a.start - b.start);
@@ -66,18 +72,18 @@ export function SubtitleEditor({
     };
 
     const updateSubtitle = (id, field, value) => {
-        const newSubs = subtitles.map(s => {
+        const newSubs = subtitles.map((s) => {
             if (s.id !== id) return s;
             return { ...s, [field]: value };
         });
         // Resorting might be annoying while typing time, so we avoid resorting here
-        // But for consistency we usually resort on extensive edits. 
+        // But for consistency we usually resort on extensive edits.
         // For now, let's just update in place.
         setSubtitles(newSubs);
     };
 
     const deleteSubtitle = (id) => {
-        const newSubs = subtitles.filter(s => s.id !== id);
+        const newSubs = subtitles.filter((s) => s.id !== id);
         setSubtitles(newSubs);
     };
 
@@ -94,11 +100,11 @@ export function SubtitleEditor({
         if (parts.length < 2) return 0;
         const m = parseInt(parts[0]);
         const s = parseFloat(parts[1]);
-        return (m * 60) + s;
+        return m * 60 + s;
     };
 
     // Find active subtitle index
-    const activeIndex = subtitles.findIndex(s => currentTime >= s.start && currentTime <= s.end);
+    const activeIndex = subtitles.findIndex((s) => currentTime >= s.start && currentTime <= s.end);
 
     if (!currentTrack) {
         return <div className="p-8 text-center text-muted-foreground">Select a track first</div>;
@@ -110,7 +116,9 @@ export function SubtitleEditor({
             <div className="p-3 border-b border-border/50 bg-card/50 flex justify-between items-center shrink-0 gap-2">
                 <div className="flex items-center gap-2">
                     <Captions size={16} className="text-primary" />
-                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Subtitles</span>
+                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                        Subtitles
+                    </span>
                 </div>
 
                 <div className="flex items-center gap-1">
@@ -163,10 +171,10 @@ export function SubtitleEditor({
                                     key={sub.id}
                                     ref={isActive ? activeSubRef : null}
                                     className={cn(
-                                        "p-3 rounded-lg border transition-all text-sm group relative",
+                                        'p-3 rounded-lg border transition-all text-sm group relative',
                                         isActive
-                                            ? "bg-primary/10 border-primary/50 ring-1 ring-primary/20"
-                                            : "bg-card/50 border-border/50 hover:border-primary/30"
+                                            ? 'bg-primary/10 border-primary/50 ring-1 ring-primary/20'
+                                            : 'bg-card/50 border-border/50 hover:border-primary/30'
                                     )}
                                 >
                                     <div className="flex items-center gap-2 mb-2">
@@ -175,7 +183,9 @@ export function SubtitleEditor({
                                             <input
                                                 className="w-16 bg-transparent border-none focus:outline-none text-center"
                                                 defaultValue={formatTimeSimple(sub.start)}
-                                                onBlur={(e) => updateSubtitle(sub.id, 'start', parseInputTime(e.target.value))}
+                                                onBlur={(e) =>
+                                                    updateSubtitle(sub.id, 'start', parseInputTime(e.target.value))
+                                                }
                                                 onKeyDown={(e) => {
                                                     if (e.key === 'Enter') {
                                                         e.target.blur();
@@ -187,7 +197,9 @@ export function SubtitleEditor({
                                             <input
                                                 className="w-16 bg-transparent border-none focus:outline-none text-center"
                                                 defaultValue={formatTimeSimple(sub.end)}
-                                                onBlur={(e) => updateSubtitle(sub.id, 'end', parseInputTime(e.target.value))}
+                                                onBlur={(e) =>
+                                                    updateSubtitle(sub.id, 'end', parseInputTime(e.target.value))
+                                                }
                                                 onKeyDown={(e) => {
                                                     if (e.key === 'Enter') {
                                                         e.target.blur();
