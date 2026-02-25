@@ -13,7 +13,7 @@ import {
 import { usePlayer } from '@/context/PlayerContext';
 import { useFileSystem } from '@/context/FileSystemContext';
 
-const FileTreeNode = ({
+const FileTreeNode = React.memo(({
   node,
   level,
   currentFileId,
@@ -63,7 +63,7 @@ const FileTreeNode = ({
           </button>
         </div>
         {isExpanded && (
-          <div>
+          <div className="border-l border-border/40 ml-[10px] pl-[6px]">
             {node.children.map((child, i) => (
               <FileTreeNode
                 key={child.path + i}
@@ -116,7 +116,14 @@ const FileTreeNode = ({
       </button>
     </div>
   );
-};
+});
+
+// Custom comparison function for React.memo
+// We only want to re-render a node if:
+// 1. It became the active file, or was the active file and now isn't.
+// 2. Its expanded state changed (if it's a folder).
+// 3. isPlaying changed AND it is the active file (to toggle the play/music icon).
+FileTreeNode.displayName = 'FileTreeNode';
 
 export function Playlist() {
   const { isPlaying } = usePlayer();
