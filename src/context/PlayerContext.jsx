@@ -53,11 +53,16 @@ export function PlayerProvider({ children }) {
   // Track replay counts for Auto-Replay
   const replayCountRef = useRef(0);
 
-  // Reset A-B Repeat when track changes
+  // Reset states when track changes
   const prevTrackRef = useRef(null);
   if (currentTrack?.id !== prevTrackRef.current) {
     prevTrackRef.current = currentTrack?.id;
     setLoopRegion({ start: null, end: null });
+    
+    // Auto-play the new track
+    if (!isPlaying && currentTrack) {
+      setIsPlaying(true);
+    }
   }
 
   // Sync Audio with Current Track
@@ -69,14 +74,6 @@ export function PlayerProvider({ children }) {
       if (audio.src !== currentTrack.url) {
         audio.src = currentTrack.url;
         replayCountRef.current = 0; // Reset replay count
-        
-        // Auto-play the new track
-        audio.play().then(() => {
-          setIsPlaying(true);
-        }).catch((e) => {
-          console.warn('Auto-play prevented by browser policy:', e);
-          setIsPlaying(false);
-        });
       }
     } else {
       // No track
@@ -98,10 +95,16 @@ export function PlayerProvider({ children }) {
   useEffect(() => {
     if (audioRef.current && currentTrack) {
       if (isPlaying) {
-        audioRef.current.play().catch((e) => {
-          console.warn('Play interrupted', e);
-          setIsPlaying(false);
-        });
+        const playPromise = audioRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise.catch((e) => {
+            console.warn('Play interrupted', e);
+            // Ignore AbortError caused by rapid track switching
+            if (e.name !== 'AbortError') {
+              setIsPlaying(false);
+            }
+          });
+        }
       } else {
         audioRef.current.pause();
       }
