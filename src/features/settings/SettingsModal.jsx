@@ -97,9 +97,9 @@ export function SettingsModal({ isOpen, onClose, settings, onSaveSettings }) {
       />
 
       {/* Modal Content */}
-      <div className="relative w-full max-w-lg bg-card border border-border rounded-xl shadow-2xl p-0 overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-lg bg-card/80 backdrop-blur-2xl border border-white/10 rounded-2xl shadow-[0_30px_100px_-20px_rgba(var(--primary),0.3)] p-0 overflow-hidden animate-in zoom-in-95 fade-in-0 duration-300">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-border bg-muted/30">
+        <div className="flex items-center justify-between p-5 border-b border-border/40 bg-card/40">
           <h2 className="text-lg font-bold flex items-center gap-2">
             <Keyboard size={20} className="text-primary" />
             Settings & Preferences
@@ -183,7 +183,7 @@ export function SettingsModal({ isOpen, onClose, settings, onSaveSettings }) {
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-border bg-muted/30 flex justify-end gap-2">
+        <div className="p-5 border-t border-border/40 bg-card/40 flex justify-end gap-3">
           <button
             onClick={onClose}
             className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"

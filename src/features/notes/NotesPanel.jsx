@@ -133,7 +133,8 @@ export function NotesPanel() {
               <div className="flex justify-between items-start mb-2">
                 <button
                   onClick={() => onSeek(note.timestamp)}
-                  className="flex items-center gap-1.5 text-xs font-bold text-primary bg-primary/10 hover:bg-primary/20 px-2 py-0.5 rounded transition-colors"
+                  className="flex items-center gap-1.5 text-xs font-bold text-primary-foreground bg-primary/80 hover:bg-primary px-2.5 py-1 rounded-full shadow-sm shadow-primary/30 transition-all hover:scale-105 active:scale-95"
+                  title="Play from this timestamp"
                 >
                   <Play size={10} className="fill-current" />
                   {note.formattedTime}
@@ -203,9 +204,10 @@ export function NotesPanel() {
       {/* Input Area */}
       <div className="p-4 bg-background/50 backdrop-blur-xl border-t border-border/50 shrink-0">
         <form onSubmit={handleAdd} className="flex flex-col gap-2">
-          <div className="flex justify-between items-center px-1">
-            <div className="text-xs font-mono text-muted-foreground bg-secondary/50 px-2 py-0.5 rounded">
-              At {formatTime(currentTime)}
+          <div className="flex justify-between items-center px-1 mb-1">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-primary-foreground bg-primary/80 px-2 py-0.5 rounded-full shadow-sm shadow-primary/20" title="Notes will be saved at this time">
+              <Clock size={10} />
+              {formatTime(currentTime)}
             </div>
           </div>
           <div className="relative flex gap-2">
