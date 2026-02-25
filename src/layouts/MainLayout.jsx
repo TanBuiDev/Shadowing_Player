@@ -163,17 +163,19 @@ export function MainLayout() {
 
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-1.5 md:py-2 bg-secondary hover:bg-secondary/80 rounded-lg text-xs md:text-sm font-medium transition-colors border border-border"
+            className="flex items-center justify-center gap-1 md:gap-2 w-9 h-9 md:w-auto md:px-3 md:py-2 bg-secondary hover:bg-secondary/80 rounded-lg text-xs md:text-sm font-medium transition-colors border border-border"
+            title="Open Files"
           >
-            <FileAudio size={14} className="md:w-4 md:h-4" />
+            <FileAudio size={16} className="md:w-4 md:h-4" />
             <span className="hidden sm:inline">Files</span>
           </button>
 
           <button
             onClick={() => folderInputRef.current?.click()}
-            className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-1.5 md:py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg text-xs md:text-sm font-medium transition-colors shadow-sm"
+            className="flex items-center justify-center gap-1 md:gap-2 w-9 h-9 md:w-auto md:px-3 md:py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg text-xs md:text-sm font-medium transition-colors shadow-sm"
+            title="Open Folder"
           >
-            <FolderUp size={14} className="md:w-4 md:h-4" />
+            <FolderUp size={16} className="md:w-4 md:h-4" />
             <span className="hidden sm:inline">Folder</span>
           </button>
         </div>
@@ -258,15 +260,18 @@ export function MainLayout() {
                 <SubtitleOverlay />
               </div>
             ) : (
-              <div className="text-center text-muted-foreground select-none px-4">
-                <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-secondary/50 mx-auto mb-4 md:mb-6 flex items-center justify-center border border-dashed border-border opacity-50">
-                  <Upload size={40} className="md:w-12 md:h-12" />
+              <div
+                className="text-center select-none px-4 max-w-sm mx-auto flex flex-col items-center justify-center cursor-pointer group rounded-3xl border-2 border-dashed border-border/50 hover:border-primary/50 hover:bg-secondary/20 p-12 transition-all duration-300"
+                onClick={() => folderInputRef.current?.click()}
+              >
+                <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-secondary/30 mx-auto mb-6 flex items-center justify-center border border-dashed border-border/50 text-muted-foreground group-hover:text-primary group-hover:bg-primary/10 transition-colors duration-300">
+                  <Upload size={40} className="md:w-16 md:h-16" />
                 </div>
-                <h2 className="text-lg md:text-xl font-medium text-foreground">
+                <h2 className="text-xl md:text-2xl font-bold text-foreground group-hover:text-primary transition-colors">
                   Ready to Practice
                 </h2>
-                <p className="mt-2 text-xs md:text-sm">
-                  Upload files or folders via the buttons above.
+                <p className="mt-3 text-sm md:text-base text-muted-foreground">
+                  Drag and drop a folder here, or click to <span className="text-primary font-medium">browse files</span>.
                 </p>
               </div>
             )}
