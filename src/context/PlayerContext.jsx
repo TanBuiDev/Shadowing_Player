@@ -69,12 +69,14 @@ export function PlayerProvider({ children }) {
       if (audio.src !== currentTrack.url) {
         audio.src = currentTrack.url;
         replayCountRef.current = 0; // Reset replay count
-        // Playback resumption is handled by user action or auto-play logic, not here by default to avoid auto-play policy issues?
-        // Actually original user code had: if (isPlaying) audio.play()
-        // If we swtich track while playing, we probably want to keep playing.
-        if (isPlaying) {
-          audio.play().catch(console.warn);
-        }
+        
+        // Auto-play the new track
+        audio.play().then(() => {
+          setIsPlaying(true);
+        }).catch((e) => {
+          console.warn('Auto-play prevented by browser policy:', e);
+          setIsPlaying(false);
+        });
       }
     } else {
       // No track
