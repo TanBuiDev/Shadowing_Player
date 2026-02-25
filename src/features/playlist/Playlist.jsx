@@ -51,7 +51,7 @@ const FileTreeNode = React.memo(({
             <span className={cn('text-sky-400/80')}>
               {isExpanded ? <FolderOpen size={16} /> : <Folder size={16} />}
             </span>
-            <span className="text-sm font-medium truncate">{node.name}</span>
+            <span className="text-sm font-medium truncate" title={node.name}>{node.name}</span>
           </div>
 
           <button
@@ -104,7 +104,7 @@ const FileTreeNode = React.memo(({
         >
           {isActive && isPlaying ? <Play size={14} fill="currentColor" /> : <Music size={14} />}
         </div>
-        <span className="text-sm truncate leading-tight">{node.name}</span>
+        <span className="text-sm truncate leading-tight" title={node.name}>{node.name}</span>
       </div>
 
       <button
