@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { usePlayer } from '@/context/PlayerContext';
 
+import { cn } from '@/lib/utils';
+
 export const ProgressBar = React.memo(() => {
-    const { audioRef, currentTime, duration, markers, removeMarker } = usePlayer();
+    const { audioRef, currentTime, duration, markers, removeMarker, loopRegion } = usePlayer();
 
     const [sliderValue, setSliderValue] = useState(0);
     const [isDragging, setIsDragging] = useState(false);
@@ -61,6 +63,22 @@ export const ProgressBar = React.memo(() => {
                             width: `${isFinite(duration) && duration > 0 ? (currentProgress / duration) * 100 : 0}%`,
                         }}
                     />
+
+                    {/* A-B REPEAT OVERLAY */}
+                    {loopRegion?.start !== null && (
+                        <div
+                            className={cn(
+                                "absolute top-0 bottom-0 bg-amber-500/20 backdrop-blur-sm transition-all pointer-events-none z-10",
+                                loopRegion.end === null ? "border-l-2 border-amber-500 animate-[pulse_2s_ease-in-out_infinite]" : "border-x-2 border-amber-500"
+                            )}
+                            style={{
+                                left: `${(loopRegion.start / (duration || 1)) * 100}%`,
+                                width: loopRegion.end !== null
+                                    ? `${Math.max(0, ((loopRegion.end - loopRegion.start) / (duration || 1)) * 100)}%`
+                                    : `calc(100% - ${(loopRegion.start / (duration || 1)) * 100}%)`,
+                            }}
+                        />
+                    )}
                 </div>
 
                 {/* MARKERS LAYER (Above Bar) */}

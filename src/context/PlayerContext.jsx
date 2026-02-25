@@ -28,8 +28,37 @@ export function PlayerProvider({ children }) {
   const [loopCurrent, setLoopCurrent] = useState(false);
   const [autoPause, setAutoPause] = useState(false);
 
+  // A-B Repeat
+  const [loopRegion, setLoopRegion] = useState({ start: null, end: null });
+
+  const toggleABRepeat = () => {
+    setLoopRegion((prev) => {
+      // 1. If completely off, set A
+      if (prev.start === null) return { start: currentTime, end: null };
+      
+      // 2. If A is set but B is not, set B
+      if (prev.start !== null && prev.end === null) {
+        // Ensure B > A. If they clicked B earlier than A, swap them.
+        if (currentTime <= prev.start) {
+          return { start: currentTime, end: prev.start };
+        }
+        return { start: prev.start, end: currentTime };
+      }
+
+      // 3. If both are set, clear them
+      return { start: null, end: null };
+    });
+  };
+
   // Track replay counts for Auto-Replay
   const replayCountRef = useRef(0);
+
+  // Reset A-B Repeat when track changes
+  const prevTrackRef = useRef(null);
+  if (currentTrack?.id !== prevTrackRef.current) {
+    prevTrackRef.current = currentTrack?.id;
+    setLoopRegion({ start: null, end: null });
+  }
 
   // Sync Audio with Current Track
   useEffect(() => {
@@ -160,6 +189,9 @@ export function PlayerProvider({ children }) {
         markers,
         addMarkerAtCurrentTime,
         removeMarker,
+        // A-B Repeat
+        loopRegion,
+        toggleABRepeat,
       }}
     >
       {children}
@@ -168,7 +200,17 @@ export function PlayerProvider({ children }) {
         ref={audioRef}
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
-        onTimeUpdate={(e) => setCurrentTime(e.target.currentTime)}
+        onTimeUpdate={(e) => {
+          const t = e.target.currentTime;
+          setCurrentTime(t);
+          
+          // Enforce A-B loop
+          if (loopRegion.start !== null && loopRegion.end !== null) {
+            if (t >= loopRegion.end) {
+              e.target.currentTime = loopRegion.start;
+            }
+          }
+        }}
         onLoadedMetadata={(e) => setDuration(e.target.duration)}
         onEnded={onTrackEnded}
         onError={(e) => {

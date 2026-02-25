@@ -61,6 +61,8 @@ export function Controls({ onOpenSettings }) {
         activePanel,
         togglePanel,
         addMarkerAtCurrentTime,
+        loopRegion,
+        toggleABRepeat,
     } = usePlayer();
 
     const { nextTrack, prevTrack } = useFileSystem();
@@ -85,6 +87,16 @@ export function Controls({ onOpenSettings }) {
 
                 {/* GROUP 1: PLAYBACK LOGIC (Left) */}
                 <div className="flex items-center gap-2 md:gap-4">
+                    <ControlButton
+                        title="A-B Repeat"
+                        active={loopRegion.start !== null}
+                        onClick={toggleABRepeat}
+                        className={cn(
+                            loopRegion.start !== null && loopRegion.end === null && "animate-pulse border-amber-500/30 text-amber-500 bg-amber-500/10 shadow-[0_0_15px_-3px_rgba(245,158,11,0.3)]",
+                        )}
+                    >
+                        <span className="font-extrabold text-[11px] tracking-tight pointer-events-none select-none">A-B</span>
+                    </ControlButton>
                     <ControlButton
                         icon={Repeat}
                         title="Loop Current"
@@ -174,7 +186,7 @@ export function Controls({ onOpenSettings }) {
                                     className="fixed inset-0 z-40"
                                     onClick={() => setIsSettingsOpen(false)}
                                 />
-                                <div className="absolute bottom-full right-1/2 translate-x-1/2 md:right-0 md:translate-x-0 mb-4 w-64 bg-card border border-border rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                                <div className="absolute bottom-full right-0 md:right-0 mb-4 w-64 md:w-72 bg-card border border-border rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                                     {settingsView === 'main' && (
                                         <div className="py-2">
                                             <button
