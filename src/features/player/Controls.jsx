@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { usePlayer } from '@/context/PlayerContext';
 import { useFileSystem } from '@/context/FileSystemContext';
-import { ProgressBar } from './ProgressBar';
+import { WaveformPlayer } from './WaveformPlayer';
 
 // Helper Component for Standardized Secondary Buttons
 const ControlButton = ({
@@ -80,7 +80,7 @@ export function Controls({ onOpenSettings }) {
     return (
         <div className="flex flex-col gap-6 w-full max-w-3xl mx-auto p-6 bg-card/60 backdrop-blur-xl border border-border/40 rounded-3xl shadow-2xl">
             {/* Smooth Scrubbing Progress Bar */}
-            <ProgressBar />
+            <WaveformPlayer />
 
             {/* PRIMARY CONTROLS CONTAINER */}
             <div className="flex flex-wrap items-center justify-center gap-4 md:gap-8 w-full">
