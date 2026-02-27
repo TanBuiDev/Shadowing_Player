@@ -6,7 +6,7 @@ import { useSettings } from '@/context/SettingsContext';
 const PlayerContext = createContext(null);
 
 export function PlayerProvider({ children }) {
-  const { currentTrack, nextTrack, markers, addMarker, deleteMarker } = useFileSystem();
+  const { currentTrack, nextTrack, markers, addMarker, deleteMarker, updateMarker } = useFileSystem();
   const { settings } = useSettings();
 
   const audioRef = useRef(null);
@@ -194,6 +194,7 @@ export function PlayerProvider({ children }) {
         markers,
         addMarkerAtCurrentTime,
         removeMarker,
+        updateMarker,
         // A-B Repeat
         loopRegion,
         toggleABRepeat,

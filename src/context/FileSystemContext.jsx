@@ -284,6 +284,15 @@ export function FileSystemProvider({ children }) {
         await dbService.saveMarkers(currentTrack.id, updatedMarkers);
     };
 
+    const updateMarker = async (markerId, newTime) => {
+        if (!currentTrack) return;
+        const updatedMarkers = markers.map(m => 
+            m.id === markerId ? { ...m, time: newTime } : m
+        ).sort((a, b) => a.time - b.time);
+        setMarkers(updatedMarkers);
+        await dbService.saveMarkers(currentTrack.id, updatedMarkers);
+    };
+
     return (
         <FileSystemContext.Provider
             value={{
@@ -310,6 +319,7 @@ export function FileSystemProvider({ children }) {
                 updateSubtitles,
                 addMarker,
                 deleteMarker,
+                updateMarker,
             }}
         >
             {children}
