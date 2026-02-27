@@ -82,14 +82,14 @@ export function SettingsModal({ isOpen, onClose, settings, onSaveSettings }) {
   const actions = [
     { id: 'playPause', label: 'Play / Pause' },
     { id: 'replay', label: 'Replay (From Start)' },
-    { id: 'seekBack', label: 'Seek Backward 5s' },
-    { id: 'seekForward', label: 'Seek Forward 5s' },
+    { id: 'seekBack', label: 'Seek Backward 3s' },
+    { id: 'seekForward', label: 'Seek Forward 3s' },
     { id: 'toggleRecord', label: 'Toggle Record' },
     { id: 'addMarker', label: 'Add Timestamp Marker' },
   ];
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in"
@@ -126,7 +126,7 @@ export function SettingsModal({ isOpen, onClose, settings, onSaveSettings }) {
                   <button
                     onClick={() => setListeningCoords({ actionKey: action.id })}
                     className={cn(
-                      'min-w-[100px] px-3 py-1.5 rounded-md text-xs font-mono font-bold transition-all border',
+                      'min-w-25 px-3 py-1.5 rounded-md text-xs font-mono font-bold transition-all border',
                       listeningCoords?.actionKey === action.id
                         ? 'bg-primary text-primary-foreground border-primary animate-pulse'
                         : 'bg-secondary text-secondary-foreground border-border group-hover:border-primary/50'

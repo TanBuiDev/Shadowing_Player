@@ -53,10 +53,10 @@ export function MainLayout() {
         }
       },
       seekBack: () => {
-        if (audioRef.current) audioRef.current.currentTime -= 5;
+        if (audioRef.current) audioRef.current.currentTime -= 3;
       },
       seekForward: () => {
-        if (audioRef.current) audioRef.current.currentTime += 5;
+        if (audioRef.current) audioRef.current.currentTime += 3;
       },
       toggleRecord: () => {
         console.log('Toggle Record triggered (placeholder)');
@@ -137,7 +137,7 @@ export function MainLayout() {
           <div className="p-2 bg-primary rounded-lg text-primary-foreground shadow-lg shadow-primary/20">
             <Mic size={18} className="md:w-5 md:h-5" />
           </div>
-          <h1 className="text-base md:text-xl font-bold tracking-tight bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent hidden sm:block">
+          <h1 className="text-base md:text-xl font-bold tracking-tight bg-linear-to-r from-primary to-purple-400 bg-clip-text text-transparent hidden sm:block">
             Shadowing Player
           </h1>
         </div>
@@ -225,19 +225,19 @@ export function MainLayout() {
         </aside>
 
         {/* MAIN VISUAL AREA */}
-        <main className="flex-1 flex flex-col relative bg-gradient-to-br from-background to-secondary/20 min-w-0 w-full">
+        <main className="flex-1 flex flex-col relative bg-linear-to-br from-background to-secondary/20 min-w-0 w-full">
           <div className="flex-1 flex items-center justify-center p-4 md:p-8 min-h-0 overflow-y-auto">
             {currentTrack ? (
               <div className="text-center space-y-4 md:space-y-6 animate-in fade-in zoom-in duration-300 w-full max-w-2xl">
                 <div className="relative">
-                  <div className="w-40 h-40 sm:w-48 sm:h-48 md:w-64 md:h-64 rounded-3xl bg-gradient-to-tr from-primary to-purple-600 shadow-[0_20px_60px_-10px_rgba(var(--primary),0.4)] mx-auto flex items-center justify-center relative overflow-hidden group">
+                  <div className="w-40 h-40 sm:w-48 sm:h-48 md:w-64 md:h-64 rounded-3xl bg-linear-to-tr from-primary to-purple-600 shadow-[0_20px_60px_-10px_rgba(var(--primary),0.4)] mx-auto flex items-center justify-center relative overflow-hidden group">
                     <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1614680376593-902f74cf0d41?q=80&w=1000&auto=format&fit=crop')] opacity-30 mix-blend-overlay bg-cover bg-center transition-transform hover:scale-110 duration-700" />
                     {isPlaying ? (
                       <div className="flex items-end gap-1 md:gap-1.5 h-12 md:h-16">
                         {[...Array(6)].map((_, i) => (
                           <div
                             key={i}
-                            className="w-2 md:w-2.5 bg-white/90 rounded-full animate-[bounce_1s_infinite]"
+                            className="w-2 md:w-2.5 bg-white/90 rounded-full animate-bounce"
                             style={{ animationDelay: `${i * 0.1}s`, height: '60%' }}
                           />
                         ))}
@@ -248,7 +248,7 @@ export function MainLayout() {
                   </div>
                 </div>
                 <div className="space-y-1 px-4">
-                  <h2 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-foreground break-words drop-shadow-sm">
+                  <h2 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-foreground wrap-break-word drop-shadow-sm">
                     {currentTrack.name.replace(/\.[^/.]+$/, '')}
                   </h2>
                   <p className="text-sm md:text-base text-muted-foreground font-medium flex items-center justify-center gap-2">
